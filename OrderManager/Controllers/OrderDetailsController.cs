@@ -46,28 +46,48 @@ namespace OrderManager.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutOrderDetail(int id, OrderDetail orderDetail)
         {
-            if (id != orderDetail.Id)
+            //acquire the status from existing entry
+            var currentStatus = _context.Set<OrderDetail>().Find(id);
+            _context.Entry(currentStatus).State = EntityState.Detached;
+            
+            //checking whether status is closed (closed status = 2)
+            if (currentStatus.Status == 2)
             {
-                return BadRequest();
+                return BadRequest("Order Status is closed");
             }
-
-            _context.Entry(orderDetail).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!OrderDetailExists(id))
+            else {
+                if (id != orderDetail.Id)
                 {
-                    return NotFound();
+                    return BadRequest();
                 }
                 else
                 {
-                    throw;
+                    _context.Entry(orderDetail).State = EntityState.Modified;
+
+                    try
+                    {
+
+                        await _context.SaveChangesAsync();
+
+                    }
+                    catch (DbUpdateConcurrencyException)
+                    {
+                        if (!OrderDetailExists(id))
+                        {
+                            return NotFound();
+                        }
+                        else
+                        {
+                            throw;
+                        }
+                    }
+
                 }
+
+
             }
+
+            
 
             return NoContent();
         }
@@ -92,8 +112,9 @@ namespace OrderManager.Controllers
             {
                 return NotFound();
             }
-
-            _context.OrderDetails.Remove(orderDetail);
+            
+               _context.OrderDetails.Remove(orderDetail);
+            
             await _context.SaveChangesAsync();
 
             return NoContent();
